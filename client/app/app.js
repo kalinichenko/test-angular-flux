@@ -31,16 +31,15 @@ angular.module('testAngularFluxApp')
 
 
 angular.module('testAngularFluxApp')
-  .factory('AreasActions', function($http, flux) {
+  .factory('AreasActions', function($resource, flux) {
+    var AreaResource = $resource('/api/areas');
     return {
       loadAreas: function() {
         flux.dispatch('loadingAreas');
-        $http.get('/api/areas')
-          .success(function(areas) {
-            flux.dispatch('loadedAreasOK', areas.Areas);
-          })
-          .error(function(error) {
-            flux.dispatch('loadedAreasBAD', error);
+        var areas = AreaResource.query(function() {
+            flux.dispatch('loadedAreasOK', areas);
+          }, function(error) {
+            flux.dispatch('loadedAreasBAD', error.statusText);
           });
       },
       selectArea: function(area) {
@@ -53,7 +52,7 @@ angular.module('testAngularFluxApp')
         flux.dispatch('deleteArea', area);
       }
     };
-  })
+  });
 
 angular
   .module('testAngularFluxApp')
@@ -77,7 +76,7 @@ angular
         this.waitFor('GroupsStore', function() {
           var idx = _.findIndex(state.areas, function(_area) {
             return _area.Id === area.Id;
-          })
+          });
           state = state.areas.splice(idx, 1);
           this.emit('areas.changed');
         });
@@ -137,7 +136,7 @@ angular.module('testAngularFluxApp')
           $scope.loading = AreasStore.loading;
         });
         $scope.addArea = function () {
-          var area = {Id: 'Area' + $scope.areas.length, Title: 'Area ' + $scope.areas.length};
+          var area = {Id: 'Area' + ($scope.areas.length + 1), Title: 'Area ' + ($scope.areas.length + 1)};
           AreasActions.addArea(area);
         };
         $scope.deleteArea = function (area) {
@@ -152,8 +151,7 @@ angular
   .module('testAngularFluxApp')
   .store('GroupsStore', function(flux) {
     var state = flux.immutable({
-      areaId: -1,
-      groups: []
+      area: {}
     });
 
     return {
@@ -162,20 +160,18 @@ angular
         'deleteArea': 'deleteArea'
       },
       deleteArea: function(area) {
-        if (area.Id === state.areaId) {
-          state = state.groups.splice(0, state.groups.length);
+        if (area.Id === state.area.Id) {
+          state = state.set('area', {});
           this.emitChange();
         }
       },
       selectArea: function(area) {
-        state = state.set('areaId', area.Id);
-        state = state.groups.splice(0, state.groups.length);
-        state = state.groups.concat(area.Groups);
+        state = state.set('area', area);
         this.emitChange();
       },
       exports: {
         get groups() {
-          return state.groups;
+          return state.area.Groups || [];
         }
       }
     };
