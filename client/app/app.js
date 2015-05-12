@@ -9,8 +9,8 @@ angular.module('testAngularFluxApp', [
     'flux'
   ])
   .constant('_', window._)
-  .run(function ($rootScope) {
-     $rootScope._ = window._;
+  .run(function($rootScope) {
+    $rootScope._ = window._;
   })
   .config(function($stateProvider, $urlRouterProvider, $locationProvider) {
     $urlRouterProvider
@@ -28,27 +28,29 @@ angular.module('testAngularFluxApp')
     fluxProvider.useCloning(false);
   });
 
-
+angular.module('testAngularFluxApp')
+  .factory('AreaResource', function($resource) {
+    return $resource('/api/areas');
+  });
 
 angular.module('testAngularFluxApp')
-  .factory('AreasActions', function($resource, flux) {
-    var AreaResource = $resource('/api/areas');
+  .factory('AreasActions', function(flux, AreaResource) {
     return {
       loadAreas: function() {
         flux.dispatch('loadingAreas');
-        var areas = AreaResource.query(function() {
-            flux.dispatch('loadedAreasOK', areas);
-          }, function(error) {
-            flux.dispatch('loadedAreasBAD', error.statusText);
-          });
+        AreaResource.query().$promise.then(function(areas) {
+          flux.dispatch('loadedAreasOK', areas);
+        }, function(error) {
+          flux.dispatch('loadedAreasBAD', error.statusText);
+        });
       },
       selectArea: function(area) {
         flux.dispatch('selectArea', area);
       },
-      addArea: function (area) {
+      addArea: function(area) {
         flux.dispatch('addArea', area);
       },
-      deleteArea: function (area) {
+      deleteArea: function(area) {
         flux.dispatch('deleteArea', area);
       }
     };
@@ -68,11 +70,11 @@ angular
         'loadingAreas': 'loadingAreas',
         'loadedAreasOK': 'loadedAreasOK'
       },
-      addArea: function (area) {
+      addArea: function(area) {
         state = state.areas.push(area);
         this.emit('areas.changed');
       },
-      deleteArea: function (area) {
+      deleteArea: function(area) {
         this.waitFor('GroupsStore', function() {
           var idx = _.findIndex(state.areas, function(_area) {
             return _area.Id === area.Id;
@@ -93,11 +95,11 @@ angular
       },
       exports: {
         get areas() {
-          return state.areas;
-        },
-        get loading() {
-          return state.loading;
-        }
+            return state.areas;
+          },
+          get loading() {
+            return state.loading;
+          }
       }
     };
   });
@@ -110,12 +112,12 @@ angular.module('testAngularFluxApp')
       controllerAs: 'areaCtrl',
       scope: {},
       template: '<div ng-show="loading" class="well">Loading areas ...</div>' +
-      '<ul class="list-group">'+
-      '<li class="list-group-item" ng-repeat="area in areas track by area.Id">' +
-      '<h3 ng-click=\'selectArea(area)\'>{{area.Title}}</h3>'+
-      '<button class="btn" ng-click="deleteArea(area)">Delete</button>' +
-      '</li></ul>'+
-      '<button class="btn" ng-click="addArea()">Add</button><groups />',
+        '<ul class="list-group">' +
+        '<li class="list-group-item" ng-repeat="area in areas track by area.Id">' +
+        '<h3 ng-click=\'selectArea(area)\'>{{area.Title}}</h3>' +
+        '<button class="btn" ng-click="deleteArea(area)">Delete</button>' +
+        '</li></ul>' +
+        '<button class="btn" ng-click="addArea()">Add</button><groups />',
 
       controller: function($scope, AreasStore) {
         $scope.areas = AreasStore.areas.toJS();
@@ -135,11 +137,14 @@ angular.module('testAngularFluxApp')
         $scope.$listenTo(AreasStore, 'areas.loading', function() {
           $scope.loading = AreasStore.loading;
         });
-        $scope.addArea = function () {
-          var area = {Id: 'Area' + ($scope.areas.length + 1), Title: 'Area ' + ($scope.areas.length + 1)};
+        $scope.addArea = function() {
+          var area = {
+            Id: 'Area' + ($scope.areas.length + 1),
+            Title: 'Area ' + ($scope.areas.length + 1)
+          };
           AreasActions.addArea(area);
         };
-        $scope.deleteArea = function (area) {
+        $scope.deleteArea = function(area) {
           AreasActions.deleteArea(area);
         };
         AreasActions.loadAreas();
@@ -193,3 +198,4 @@ angular.module('testAngularFluxApp')
       }
     };
   });
+

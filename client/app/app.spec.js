@@ -1,23 +1,39 @@
 'use strict';
 
 describe('Service: AreasActions', function() {
-  var $httpBackend, AreasActions, AreasStore;
+  var mockAreaResource, AreasActions, AreasStore, queryDeferred, $scope, $rootScope;
+
   beforeEach(module('testAngularFluxApp'));
-  beforeEach(inject(function($injector) {
-    $httpBackend = $injector.get('$httpBackend');
-    AreasActions = $injector.get('AreasActions');
-    AreasStore = $injector.get('AreasStore');
-  }));
-  afterEach(function() {
-    $httpBackend.verifyNoOutstandingExpectation();
-    $httpBackend.verifyNoOutstandingRequest();
+
+  beforeEach(function() {
+    module(function($provide) {
+      mockAreaResource = {};
+      $provide.value('AreaResource', mockAreaResource);
+    });
   });
+
+  beforeEach(inject(function(_AreasActions_, _AreasStore_, $q, _$rootScope_) {
+    mockAreaResource.query = function() {
+      queryDeferred = $q.defer();
+      queryDeferred.resolve([1, 2]);
+      return {
+        $promise: queryDeferred.promise
+      };
+    };
+    AreasActions = _AreasActions_;
+    AreasStore = _AreasStore_;
+    $rootScope = _$rootScope_;
+    $scope = $rootScope.$new();
+  }));
+
+
   it('loadAreas should return areas', function() {
     // the data doesn't matter
-    $httpBackend.expectGET('/api/areas').respond(200, '[1,2]');
+    spyOn(mockAreaResource, 'query').andCallThrough();
     AreasActions.loadAreas();
-    $httpBackend.flush();
-    expect(AreasStore.areas.toJS()).toEqual([1, 2]);
+    $scope.$listenTo(AreasStore, 'areas.changed', function() {
+      expect(AreasStore.areas.toJS()).toEqual([1, 2]);
+    });
   });
 });
 
